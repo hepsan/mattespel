@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Matte-spel</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    #gameSelect {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    #gameSelect button {
+      padding: 10px 20px;
+      font-size: 1.1em;
+      margin: 5px;
+    }
+    #controls {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    /* Två startknappar för timer och ej timer */
+    #startWithTimer,
+    #startWithoutTimer,
+    #backButton {
+      padding: 10px 20px;
+      font-size: 1em;
+      margin: 0 5px 10px 5px;
+    }
+    #timer {
+      font-size: 1.5em;
+      margin-bottom: 10px;
+    }
+    #result {
+      font-size: 1.3em;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    td {
+      padding: 10px;
+      vertical-align: top;
+    }
+    .problem {
+      margin-bottom: 10px;
+    }
+    .problem span {
+      font-size: 1.2em;
+      margin-right: 5px;
+    }
+    input.answer {
+      width: 60px;
+      font-size: 1.2em;
+      padding: 2px;
+    }
+    input.correct {
+      background-color: #c8e6c9;
+    }
+    input.incorrect {
+      background-color: #ffcdd2;
+    }
+  </style>
+</head>
+<body>
+  <!-- Spelmeny -->
+  <div id="gameSelect">
+    <h1>Välj spel</h1>
+    <button id="lillaPlusBtn">Lilla plus</button>
+    <button id="storaPlusBtn">Stora plus</button>
+    <button id="lillaMinusBtn">Lilla minus</button>
+    <button id="storaMinusBtn">Stora minus</button>
+    <button id="multiplikationBtn">Multiplikation</button>
+    <button id="divisionBtn">Division</button>
+  </div>
+
+  <!-- Spelområdet -->
+  <div id="gameArea" style="display:none;">
+    <h2 id="gameTitle"></h2>
+    <div id="controls">
+      <!-- Två startknappar: med och utan timer -->
+      <button id="startWithTimer">Starta med timer</button>
+      <button id="startWithoutTimer">Starta utan timer</button>
+      <button id="backButton">Tillbaka</button>
+      <div id="timer">02:00</div>
+      <div id="result"></div>
+    </div>
+    <table id="taskTable"></table>
+  </div>
+
+  <script>
+    let numTasks = 30;
+    let tasks = [];
+    let timer;
+    let timeLeft = 120; // 2 minuter i sekunder
+    // Möjliga lägen: 'lilla_plus', 'stora_plus', 'lilla_minus', 'stora_minus', 'multiplikation', 'division'
+    let gameMode = "";
+    let useTimer = false; // Anger om spelet ska använda timer eller ej
+
+    // Generera uppgifter utifrån valt spel
+    function generateTasks() {
+      tasks = [];
+      for (let i = 0; i < numTasks; i++) {
+        let a, b, op, answer;
+        if (gameMode === 'lilla_plus') {
+          // Addition med svar <= 10
+          a = Math.floor(Math.random() * 11); // 0–10
+          let maxB = 10 - a;
+          b = Math.floor(Math.random() * (maxB + 1));
+          op = '+';
+          answer = a + b;
+        } else if (gameMode === 'stora_plus') {
+          // Addition med termer 0–10 (svar kan bli upp till 20)
+          a = Math.floor(Math.random() * 11);
+          b = Math.floor(Math.random() * 11);
+          op = '+';
+          answer = a + b;
+        } else if (gameMode === 'lilla_minus') {
+          // Subtraktion med tal 0–10, med färre fall där resultatet blir 0
+          a = Math.floor(Math.random() * 11); // 0–10
+          b = Math.floor(Math.random() * (a + 1)); // 0 till a
+          // Om a > 0 och resultatet blir 0, gör en omvalning med ca 70% sannolikhet.
+          if (a > 0 && b === a && Math.random() < 0.7) {
+            b = Math.floor(Math.random() * a); // 0 till a-1
+          }
+          op = '-';
+          answer = a - b;
+        } else if (gameMode === 'stora_minus') {
+          // Subtraktion med tal mellan 11 och 20.
+          a = Math.floor(Math.random() * 10) + 11; // 11–20
+          // b slumpas från 11 till a (för att undvika negativa resultat)
+          b = Math.floor(Math.random() * (a - 10)) + 11;
+          op = '-';
+          answer = a - b;
+        } else if (gameMode === 'multiplikation') {
+          // Multiplikationstabellerna 1–10
+          a = Math.floor(Math.random() * 10) + 1;
+          b = Math.floor(Math.random() * 10) + 1;
+          op = '×';
+          answer = a * b;
+        } else if (gameMode === 'division') {
+          // Division med nämnare 1–10, med heltalskvot
+          b = Math.floor(Math.random() * 10) + 1; // nämnare 1–10
+          const quotient = Math.floor(Math.random() * 10) + 1; // kvot 1–10
+          a = b * quotient; // täljare
+          op = '÷';
+          answer = quotient;
+        }
+        tasks.push({ a: a, b: b, op: op, answer: answer });
+      }
+      
+      // Rensa tidigare tabellinnehåll
+      const taskTable = document.getElementById('taskTable');
+      taskTable.innerHTML = '';
+      
+      // Skapa tabell med 3 spalter
+      const cols = 3;
+      const rows = Math.ceil(numTasks / cols);
+      let taskIndex = 0;
+      for (let rowIndex = 0; rowIndex < rows; rowIndex++) {
+        const row = document.createElement('tr');
+        for (let col = 0; col < cols; col++) {
+          const cell = document.createElement('td');
+          if (taskIndex < numTasks) {
+            const problemDiv = document.createElement('div');
+            problemDiv.className = 'problem';
+            problemDiv.id = 'problem-' + taskIndex;
+
+            const problemText = document.createElement('span');
+            problemText.textContent = tasks[taskIndex].a + ' ' + tasks[taskIndex].op + ' ' + tasks[taskIndex].b + ' = ';
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'answer';
+            input.id = 'input-' + taskIndex;
+            input.dataset.taskIndex = taskIndex;
+
+            // När användaren trycker på Enter kontrolleras svaret, fältet markeras och fokus flyttas
+            input.addEventListener('keydown', function(event) {
+              if (event.key === 'Enter') {
+                const idx = parseInt(this.dataset.taskIndex, 10);
+                const userAnswer = parseInt(this.value, 10);
+                if (userAnswer === tasks[idx].answer) {
+                  this.classList.add('correct');
+                } else {
+                  this.classList.add('incorrect');
+                }
+                this.disabled = true;
+                checkAllSolved();
+                const nextInput = document.getElementById('input-' + (idx + 1));
+                if (nextInput) {
+                  nextInput.focus();
+                }
+              }
+            });
+
+            problemDiv.appendChild(problemText);
+            problemDiv.appendChild(input);
+            cell.appendChild(problemDiv);
+            taskIndex++;
+          }
+          row.appendChild(cell);
+        }
+        taskTable.appendChild(row);
+      }
+    }
+
+    // Visa antalet rätta svar
+    function showResult() {
+      let correctCount = 0;
+      const inputs = document.getElementsByClassName('answer');
+      for (let input of inputs) {
+        if (input.classList.contains('correct')) {
+          correctCount++;
+        }
+      }
+      document.getElementById('result').textContent = "Antal rätt: " + correctCount + " av " + numTasks;
+    }
+
+    // Kontrollera om alla uppgifter är lösta
+    function checkAllSolved() {
+      const inputs = document.getElementsByClassName('answer');
+      let allSolved = true;
+      for (let input of inputs) {
+        if (!input.disabled) {
+          allSolved = false;
+          break;
+        }
+      }
+      if (allSolved) {
+        if (useTimer) {
+          clearInterval(timer);
+        }
+        showResult();
+      }
+    }
+
+    // Uppdatera timern varje sekund (endast om timer används)
+    function updateTimer() {
+      if (timeLeft >= 0) {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        document.getElementById('timer').textContent =
+          (minutes < 10 ? '0' : '') + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+      }
+      if (timeLeft <= 0) {
+        clearInterval(timer);
+        playBeep();
+        document.getElementById('timer').textContent = "Tiden är slut!";
+        const inputs = document.getElementsByClassName('answer');
+        for (let input of inputs) {
+          input.disabled = true;
+        }
+        showResult();
+      }
+      timeLeft--;
+    }
+
+    // Spela ett kort ljud med Web Audio API
+    function playBeep() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+        oscillator.connect(audioCtx.destination);
+        oscillator.start();
+        setTimeout(function() {
+          oscillator.stop();
+          audioCtx.close();
+        }, 500);
+      } catch (e) {
+        console.log("Ljud kan inte spelas:", e);
+      }
+    }
+
+    // Starta spelet: återställ timer (om vald), generera nya uppgifter och sätt fokus på första fältet.
+    // Parametern useTimerOption bestämmer om timern ska användas.
+    function startGame(useTimerOption) {
+      useTimer = useTimerOption;
+      if (timer) {
+        clearInterval(timer);
+      }
+      if (useTimer) {
+        timeLeft = 120;
+        document.getElementById('timer').textContent = "02:00";
+        document.getElementById('timer').style.display = "block";
+      } else {
+        document.getElementById('timer').textContent = "";
+        document.getElementById('timer').style.display = "none";
+      }
+      document.getElementById('result').textContent = "";
+      generateTasks();
+      if (useTimer) {
+        timer = setInterval(updateTimer, 1000);
+      }
+      const firstInput = document.getElementById('input-0');
+      if (firstInput) {
+        firstInput.focus();
+      }
+    }
+
+    // Klickhanterare för spelval
+    document.getElementById('lillaPlusBtn').addEventListener('click', function() {
+      gameMode = 'lilla_plus';
+      document.getElementById('gameTitle').textContent = "Lilla plus";
+      document.getElementById('gameSelect').style.display = "none";
+      document.getElementById('gameArea').style.display = "block";
+    });
+    document.getElementById('storaPlusBtn').addEventListener('click', function() {
+      gameMode = 'stora_plus';
+      document.getElementById('gameTitle').textContent = "Stora plus";
+      document.getElementById('gameSelect').style.display = "none";
+      document.getElementById('gameArea').style.display = "block";
+    });
+    document.getElementById('lillaMinusBtn').addEventListener('click', function() {
+      gameMode = 'lilla_minus';
+      document.getElementById('gameTitle').textContent = "Lilla minus";
+      document.getElementById('gameSelect').style.display = "none";
+      document.getElementById('gameArea').style.display = "block";
+    });
+    document.getElementById('storaMinusBtn').addEventListener('click', function() {
+      gameMode = 'stora_minus';
+      document.getElementById('gameTitle').textContent = "Stora minus";
+      document.getElementById('gameSelect').style.display = "none";
+      document.getElementById('gameArea').style.display = "block";
+    });
+    document.getElementById('multiplikationBtn').addEventListener('click', function() {
+      gameMode = 'multiplikation';
+      document.getElementById('gameTitle').textContent = "Multiplikation";
+      document.getElementById('gameSelect').style.display = "none";
+      document.getElementById('gameArea').style.display = "block";
+    });
+    document.getElementById('divisionBtn').addEventListener('click', function() {
+      gameMode = 'division';
+      document.getElementById('gameTitle').textContent = "Division";
+      document.getElementById('gameSelect').style.display = "none";
+      document.getElementById('gameArea').style.display = "block";
+    });
+
+    // Klickhanterare för startknapparna
+    document.getElementById('startWithTimer').addEventListener('click', function() {
+      startGame(true);
+    });
+    document.getElementById('startWithoutTimer').addEventListener('click', function() {
+      startGame(false);
+    });
+
+    // Tillbaka-knapp: stoppar eventuell timer, återställer vyerna och visar standard-tid.
+    document.getElementById('backButton').addEventListener('click', function() {
+      if (timer) {
+        clearInterval(timer);
+      }
+      document.getElementById('gameArea').style.display = "none";
+      document.getElementById('gameSelect').style.display = "block";
+      document.getElementById('result').textContent = "";
+      document.getElementById('timer').style.display = "block";
+      document.getElementById('timer').textContent = "02:00";
+    });
+  </script>
+</body>
+</html>
