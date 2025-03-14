@@ -17,6 +17,10 @@
       text-align: center;
       margin-bottom: 20px;
     }
+    /* Skapa två rader för knapparna */
+    .gameRow {
+      margin-bottom: 10px;
+    }
     #gameSelect button {
       padding: 10px 20px;
       font-size: 1.1em;
@@ -26,7 +30,7 @@
       text-align: center;
       margin-bottom: 10px;
     }
-    /* Två startknappar för timer och ej timer samt Tillbaka-knapp */
+    /* Två startknappar (med/utan timer) samt Tillbaka-knapp */
     #startWithTimer,
     #startWithoutTimer,
     #backButton {
@@ -71,22 +75,27 @@
   </style>
 </head>
 <body>
-  <!-- Spelmeny -->
+  <!-- Spelmeny med ny rubrik och omordnade knappar -->
   <div id="gameSelect">
-    <h1>Välj spel</h1>
-    <button id="lillaPlusBtn">Lilla plus</button>
-    <button id="storaPlusBtn">Stora plus</button>
-    <button id="lillaMinusBtn">Lilla minus</button>
-    <button id="storaMinusBtn">Stora minus</button>
-    <button id="multiplikationBtn">Multiplikation</button>
-    <button id="divisionBtn">Division</button>
+    <h1>Vad vill du öva på?</h1>
+    <div class="gameRow">
+      <button id="tiokompisarBtn">Tiokompisar</button>
+      <button id="lillaPlusBtn">Lilla plus</button>
+      <button id="storaPlusBtn">Stora plus</button>
+      <button id="lillaMinusBtn">Lilla minus</button>
+      <button id="storaMinusBtn">Stora minus</button>
+    </div>
+    <div class="gameRow">
+      <button id="multiplikationBtn">Multiplikation</button>
+      <button id="divisionBtn">Division</button>
+    </div>
   </div>
 
   <!-- Spelområdet -->
   <div id="gameArea" style="display:none;">
     <h2 id="gameTitle"></h2>
     <div id="controls">
-      <!-- Två startknappar: med och utan timer -->
+      <!-- Två startknappar: med och utan timer, samt Tillbaka-knapp -->
       <button id="startWithTimer">Starta med timer</button>
       <button id="startWithoutTimer">Starta utan timer</button>
       <button id="backButton">Tillbaka</button>
@@ -101,19 +110,19 @@
     let tasks = [];
     let timer;
     let timeLeft = 120; // 2 minuter i sekunder
-    // Möjliga lägen: 'lilla_plus', 'stora_plus', 'lilla_minus', 'stora_minus', 'multiplikation', 'division'
+    // Möjliga lägen: 'tiokompisar', 'lilla_plus', 'stora_plus', 'lilla_minus', 'stora_minus', 'multiplikation', 'division'
     let gameMode = "";
     let useTimer = false; // Om spelet ska använda timer eller ej
 
-    // Generera uppgifter utifrån valt spel, utan att använda talet 0
+    // Generera uppgifter utifrån valt spel, utan att använda talet 0.
     function generateTasks() {
       tasks = [];
       for (let i = 0; i < numTasks; i++) {
         let a, b, op, answer;
         if (gameMode === 'lilla_plus') {
-          // a i [1,9] (eftersom 10 ger inget giltigt b) och b i [1, 10 - a]
+          // a i [1,9] (om a = 10 blir inget giltigt b) och b i [1, 10 - a]
           a = Math.floor(Math.random() * 9) + 1;
-          let maxB = 10 - a; // maxB är minst 1 när a är 9
+          let maxB = 10 - a;
           b = Math.floor(Math.random() * maxB) + 1;
           op = '+';
           answer = a + b;
@@ -124,21 +133,20 @@
           op = '+';
           answer = a + b;
         } else if (gameMode === 'lilla_minus') {
-          // a i [1,10] och b i [1, a]. Om a > 1 och a == b, gör en omvalning (70 % chans) så att differensen blir > 0
+          // a i [1,10] och b i [1, a]. Vid a > 1, om b = a, gör en omvalning med ca 70% sannolikhet.
           a = Math.floor(Math.random() * 10) + 1;
           if (a === 1) {
-            b = 1; // enda möjliga talet
+            b = 1;
           } else {
             b = Math.floor(Math.random() * a) + 1;
             if (b === a && Math.random() < 0.7 && a > 1) {
-              // Om möjligt, välj b i [1, a-1]
               b = Math.floor(Math.random() * (a - 1)) + 1;
             }
           }
           op = '-';
           answer = a - b;
         } else if (gameMode === 'stora_minus') {
-          // a i [11,20] och b i [1, a] (där b är mellan 1 och a, vilket garanterar ett icke-negativt resultat)
+          // a i [11,20] och b i [1, a]
           a = Math.floor(Math.random() * 10) + 11;
           b = Math.floor(Math.random() * a) + 1;
           op = '-';
@@ -156,6 +164,12 @@
           a = b * quotient;
           op = '÷';
           answer = quotient;
+        } else if (gameMode === 'tiokompisar') {
+          // Addition där summan alltid blir 10: a i [1,9], b = 10 - a
+          a = Math.floor(Math.random() * 9) + 1;
+          b = 10 - a;
+          op = '+';
+          answer = 10;
         }
         tasks.push({ a: a, b: b, op: op, answer: answer });
       }
@@ -186,7 +200,7 @@
             input.id = 'input-' + taskIndex;
             input.dataset.taskIndex = taskIndex;
 
-            // När användaren trycker på Enter kontrolleras svaret, fältet markeras och fokus flyttas
+            // Vid tryck på Enter kontrolleras svaret, fältet markeras och fokus flyttas.
             input.addEventListener('keydown', function(event) {
               if (event.key === 'Enter') {
                 const idx = parseInt(this.dataset.taskIndex, 10);
@@ -312,6 +326,12 @@
     }
 
     // Klickhanterare för spelval
+    document.getElementById('tiokompisarBtn').addEventListener('click', function() {
+      gameMode = 'tiokompisar';
+      document.getElementById('gameTitle').textContent = "Tiokompisar";
+      document.getElementById('gameSelect').style.display = "none";
+      document.getElementById('gameArea').style.display = "block";
+    });
     document.getElementById('lillaPlusBtn').addEventListener('click', function() {
       gameMode = 'lilla_plus';
       document.getElementById('gameTitle').textContent = "Lilla plus";
