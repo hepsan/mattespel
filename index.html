@@ -30,7 +30,7 @@
       text-align: center;
       margin-bottom: 10px;
     }
-    /* Två startknappar (med/utan timer) samt Tillbaka-knapp */
+    /* Två startknappar för timer/ej timer samt Tillbaka-knapp */
     #startWithTimer,
     #startWithoutTimer,
     #backButton {
@@ -75,7 +75,7 @@
   </style>
 </head>
 <body>
-  <!-- Spelmeny med ny rubrik och omordnade knappar -->
+  <!-- Spelmeny med uppdaterad rubrik och omordnade knappar -->
   <div id="gameSelect">
     <h1>Vad vill du öva på?</h1>
     <div class="gameRow">
@@ -120,7 +120,7 @@
       for (let i = 0; i < numTasks; i++) {
         let a, b, op, answer;
         if (gameMode === 'lilla_plus') {
-          // a i [1,9] (om a = 10 blir inget giltigt b) och b i [1, 10 - a]
+          // a i [1,9] och b i [1, 10 - a] så att summan blir högst 10.
           a = Math.floor(Math.random() * 9) + 1;
           let maxB = 10 - a;
           b = Math.floor(Math.random() * maxB) + 1;
@@ -165,11 +165,22 @@
           op = '÷';
           answer = quotient;
         } else if (gameMode === 'tiokompisar') {
-          // Addition där summan alltid blir 10: a i [1,9], b = 10 - a
+          // För Tiokompisar: summan är alltid 10.
           a = Math.floor(Math.random() * 9) + 1;
           b = 10 - a;
           op = '+';
-          answer = 10;
+          // Välj slumpmässigt vilken term som ska döljas.
+          if (Math.random() < 0.5) {
+            // Döljer den första termen.
+            answer = a; // Eleven ska fylla i den saknade termen (a)
+            tasks.push({ a: a, b: b, op: op, answer: answer, hide: 'a' });
+            continue;
+          } else {
+            // Döljer den andra termen.
+            answer = b; // Eleven ska fylla i den saknade termen (b)
+            tasks.push({ a: a, b: b, op: op, answer: answer, hide: 'b' });
+            continue;
+          }
         }
         tasks.push({ a: a, b: b, op: op, answer: answer });
       }
@@ -190,37 +201,98 @@
             const problemDiv = document.createElement('div');
             problemDiv.className = 'problem';
             problemDiv.id = 'problem-' + taskIndex;
-
-            const problemText = document.createElement('span');
-            problemText.textContent = tasks[taskIndex].a + ' ' + tasks[taskIndex].op + ' ' + tasks[taskIndex].b + ' = ';
-
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.className = 'answer';
-            input.id = 'input-' + taskIndex;
-            input.dataset.taskIndex = taskIndex;
-
-            // Vid tryck på Enter kontrolleras svaret, fältet markeras och fokus flyttas.
-            input.addEventListener('keydown', function(event) {
-              if (event.key === 'Enter') {
-                const idx = parseInt(this.dataset.taskIndex, 10);
-                const userAnswer = parseInt(this.value, 10);
-                if (userAnswer === tasks[idx].answer) {
-                  this.classList.add('correct');
-                } else {
-                  this.classList.add('incorrect');
-                }
-                this.disabled = true;
-                checkAllSolved();
-                const nextInput = document.getElementById('input-' + (idx + 1));
-                if (nextInput) {
-                  nextInput.focus();
-                }
+            
+            // För tiokompisar vill vi visa inmatningsrutan mitt i ekvationen.
+            if (gameMode === 'tiokompisar') {
+              if (tasks[taskIndex].hide === 'a') {
+                // Visa: [tom ruta] + b = 10
+                let textAfter = document.createTextNode(" + " + tasks[taskIndex].b + " = 10");
+                // Lägg in inputrutan först
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.className = 'answer';
+                input.id = 'input-' + taskIndex;
+                input.dataset.taskIndex = taskIndex;
+                // När användaren trycker på Enter, kontrollera svaret
+                input.addEventListener('keydown', function(event) {
+                  if (event.key === 'Enter') {
+                    const idx = parseInt(this.dataset.taskIndex, 10);
+                    const userAnswer = parseInt(this.value, 10);
+                    if (userAnswer === tasks[idx].answer) {
+                      this.classList.add('correct');
+                    } else {
+                      this.classList.add('incorrect');
+                    }
+                    this.disabled = true;
+                    checkAllSolved();
+                    const nextInput = document.getElementById('input-' + (idx + 1));
+                    if (nextInput) {
+                      nextInput.focus();
+                    }
+                  }
+                });
+                problemDiv.appendChild(input);
+                problemDiv.appendChild(textAfter);
+              } else {
+                // Hide === 'b'
+                // Visa: a + [tom ruta] = 10
+                let textBefore = document.createTextNode(tasks[taskIndex].a + " + ");
+                let textAfter = document.createTextNode(" = 10");
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.className = 'answer';
+                input.id = 'input-' + taskIndex;
+                input.dataset.taskIndex = taskIndex;
+                input.addEventListener('keydown', function(event) {
+                  if (event.key === 'Enter') {
+                    const idx = parseInt(this.dataset.taskIndex, 10);
+                    const userAnswer = parseInt(this.value, 10);
+                    if (userAnswer === tasks[idx].answer) {
+                      this.classList.add('correct');
+                    } else {
+                      this.classList.add('incorrect');
+                    }
+                    this.disabled = true;
+                    checkAllSolved();
+                    const nextInput = document.getElementById('input-' + (idx + 1));
+                    if (nextInput) {
+                      nextInput.focus();
+                    }
+                  }
+                });
+                problemDiv.appendChild(textBefore);
+                problemDiv.appendChild(input);
+                problemDiv.appendChild(textAfter);
               }
-            });
-
-            problemDiv.appendChild(problemText);
-            problemDiv.appendChild(input);
+            } else {
+              // För övriga spel: visa hela ekvationen i en span följt av inmatningsrutan.
+              const span = document.createElement('span');
+              span.textContent = tasks[taskIndex].a + " " + tasks[taskIndex].op + " " + tasks[taskIndex].b + " = ";
+              problemDiv.appendChild(span);
+              const input = document.createElement('input');
+              input.type = 'number';
+              input.className = 'answer';
+              input.id = 'input-' + taskIndex;
+              input.dataset.taskIndex = taskIndex;
+              input.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                  const idx = parseInt(this.dataset.taskIndex, 10);
+                  const userAnswer = parseInt(this.value, 10);
+                  if (userAnswer === tasks[idx].answer) {
+                    this.classList.add('correct');
+                  } else {
+                    this.classList.add('incorrect');
+                  }
+                  this.disabled = true;
+                  checkAllSolved();
+                  const nextInput = document.getElementById('input-' + (idx + 1));
+                  if (nextInput) {
+                    nextInput.focus();
+                  }
+                }
+              });
+              problemDiv.appendChild(input);
+            }
             cell.appendChild(problemDiv);
             taskIndex++;
           }
