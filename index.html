@@ -26,7 +26,7 @@
       text-align: center;
       margin-bottom: 10px;
     }
-    /* Två startknappar för timer och ej timer */
+    /* Två startknappar för timer och ej timer samt Tillbaka-knapp */
     #startWithTimer,
     #startWithoutTimer,
     #backButton {
@@ -103,54 +103,57 @@
     let timeLeft = 120; // 2 minuter i sekunder
     // Möjliga lägen: 'lilla_plus', 'stora_plus', 'lilla_minus', 'stora_minus', 'multiplikation', 'division'
     let gameMode = "";
-    let useTimer = false; // Anger om spelet ska använda timer eller ej
+    let useTimer = false; // Om spelet ska använda timer eller ej
 
-    // Generera uppgifter utifrån valt spel
+    // Generera uppgifter utifrån valt spel, utan att använda talet 0
     function generateTasks() {
       tasks = [];
       for (let i = 0; i < numTasks; i++) {
         let a, b, op, answer;
         if (gameMode === 'lilla_plus') {
-          // Addition med svar <= 10
-          a = Math.floor(Math.random() * 11); // 0–10
-          let maxB = 10 - a;
-          b = Math.floor(Math.random() * (maxB + 1));
+          // a i [1,9] (eftersom 10 ger inget giltigt b) och b i [1, 10 - a]
+          a = Math.floor(Math.random() * 9) + 1;
+          let maxB = 10 - a; // maxB är minst 1 när a är 9
+          b = Math.floor(Math.random() * maxB) + 1;
           op = '+';
           answer = a + b;
         } else if (gameMode === 'stora_plus') {
-          // Addition med termer 0–10 (svar kan bli upp till 20)
-          a = Math.floor(Math.random() * 11);
-          b = Math.floor(Math.random() * 11);
+          // a och b i [1,10]
+          a = Math.floor(Math.random() * 10) + 1;
+          b = Math.floor(Math.random() * 10) + 1;
           op = '+';
           answer = a + b;
         } else if (gameMode === 'lilla_minus') {
-          // Subtraktion med tal 0–10, med färre fall där resultatet blir 0
-          a = Math.floor(Math.random() * 11); // 0–10
-          b = Math.floor(Math.random() * (a + 1)); // 0 till a
-          // Om a > 0 och resultatet blir 0, gör en omvalning med ca 70% sannolikhet.
-          if (a > 0 && b === a && Math.random() < 0.7) {
-            b = Math.floor(Math.random() * a); // 0 till a-1
+          // a i [1,10] och b i [1, a]. Om a > 1 och a == b, gör en omvalning (70 % chans) så att differensen blir > 0
+          a = Math.floor(Math.random() * 10) + 1;
+          if (a === 1) {
+            b = 1; // enda möjliga talet
+          } else {
+            b = Math.floor(Math.random() * a) + 1;
+            if (b === a && Math.random() < 0.7 && a > 1) {
+              // Om möjligt, välj b i [1, a-1]
+              b = Math.floor(Math.random() * (a - 1)) + 1;
+            }
           }
           op = '-';
           answer = a - b;
         } else if (gameMode === 'stora_minus') {
-          // Subtraktion med tal mellan 11 och 20.
-          a = Math.floor(Math.random() * 10) + 11; // 11–20
-          // b slumpas från 11 till a (för att undvika negativa resultat)
-          b = Math.floor(Math.random() * (a - 10)) + 11;
+          // a i [11,20] och b i [1, a] (där b är mellan 1 och a, vilket garanterar ett icke-negativt resultat)
+          a = Math.floor(Math.random() * 10) + 11;
+          b = Math.floor(Math.random() * a) + 1;
           op = '-';
           answer = a - b;
         } else if (gameMode === 'multiplikation') {
-          // Multiplikationstabellerna 1–10
+          // a och b i [1,10]
           a = Math.floor(Math.random() * 10) + 1;
           b = Math.floor(Math.random() * 10) + 1;
           op = '×';
           answer = a * b;
         } else if (gameMode === 'division') {
-          // Division med nämnare 1–10, med heltalskvot
-          b = Math.floor(Math.random() * 10) + 1; // nämnare 1–10
-          const quotient = Math.floor(Math.random() * 10) + 1; // kvot 1–10
-          a = b * quotient; // täljare
+          // Division: b i [1,10], kvot i [1,10] och a = b * kvot
+          b = Math.floor(Math.random() * 10) + 1;
+          const quotient = Math.floor(Math.random() * 10) + 1;
+          a = b * quotient;
           op = '÷';
           answer = quotient;
         }
